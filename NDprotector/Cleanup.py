@@ -1,10 +1,12 @@
 """Clean all object when exiting in a specific order"""
-import NDprotector, os
-from NDprotector.Filtering import unset_filtering_rules
-import NDprotector.NeighCache
-from signal import SIGINT, SIGKILL, signal, SIG_IGN
+from signal import SIGINT, signal, SIG_IGN
 from threading import Thread
 from time import sleep
+
+import NDprotector
+from NDprotector.Filtering import unset_filtering_rules
+import NDprotector.NeighCache
+
 
 NDprotector.cleaning_functions = []
 

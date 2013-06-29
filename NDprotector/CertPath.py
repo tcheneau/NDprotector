@@ -1,11 +1,13 @@
 """A nfqueu that listen for CPS/CPA messages"""
+from copy import deepcopy
+import sys
+
 from NDprotector.Log import warn
 from NDprotector.CertCache import CertCache
 from NDprotector.NeighCache import NeighCache
 from scapy6send.scapy6 import *
-from copy import deepcopy
 import NDprotector
-import sys 
+
 
 if "lib" not in sys.path:
     sys.path.append("lib")

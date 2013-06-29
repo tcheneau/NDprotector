@@ -6,14 +6,17 @@ Two lists are kept:
 """
 
 from __future__ import with_statement
-from NDprotector.Log import warn
-import NDprotector, time, tempfile, os, hashlib
-import NDprotector.Cleanup
+import tempfile
+import os
+import hashlib
 from subprocess import Popen, PIPE
-from threading import Thread, RLock
-from contextlib import nested
-from signal import SIGINT, SIGKILL, signal, SIG_IGN
+from threading import RLock
+
+from NDprotector.Log import warn
+import NDprotector
+import NDprotector.Cleanup
 from scapy6send.cert import *
+
 
 
 # after this period, an unverifiable Certificate Path is discarded

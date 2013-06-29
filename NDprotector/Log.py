@@ -1,4 +1,6 @@
-import NDprotector, sys
+import sys
+
+import NDprotector
 # by default, verbose printing messages are disabled
 NDprotector.verbose = False
 

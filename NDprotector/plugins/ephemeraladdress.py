@@ -1,15 +1,17 @@
 """A plugins that implements epheremal addresses"""
 
-import NDprotector, sys
-from NDprotector.Plugin import Plugin
-from NDprotector.Log import warn
-from NDprotector.Address import Address
-from NDprotector.NeighCache import NeighCache
-from NDprotector.Cleanup import cleanup_thread_subscribe
+import sys
 from socket import AF_INET6
 from subprocess import Popen, PIPE
 from contextlib import nested
 from threading import RLock
+
+import NDprotector
+from NDprotector.Plugin import Plugin
+from NDprotector.Log import warn
+from NDprotector.Address import Address
+from NDprotector.NeighCache import NeighCache
+
 
 if "lib" not in sys.path:
     sys.path.append("lib")

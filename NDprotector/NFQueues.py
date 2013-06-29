@@ -1,13 +1,14 @@
 """handle all the differents Queue that are used by the program"""
 
 from select import select
+import sys
+
 from NDprotector.In import in_queue
 from NDprotector.Out import out_queue
 from NDprotector.CertPath import cpscpa_queue
 from NDprotector.Log import warn
 from NDprotector.Plugin import get_plugins_by_capability
 
-import sys
 
 if "lib" not in sys.path:
     sys.path.append("lib")

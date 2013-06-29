@@ -1,11 +1,18 @@
-import random, socket, NDprotector, os, time, math
+import random
+import socket
+import os
+import time
+import math
 from socket import inet_pton, inet_ntop
+from subprocess import Popen, PIPE
+
+import NDprotector
 from Log import warn
 from Tool import SigAlgList_compute, load_pkey, load_key
 from Plugin import get_plugins_by_capability
 from NDprotector.NeighCache import NeighCache
 from scapy6send.scapy6 import *
-from subprocess import Popen, PIPE
+
 
 try:
     from scapy6send.ecc import ECCkey

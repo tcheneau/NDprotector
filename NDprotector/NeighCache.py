@@ -5,12 +5,13 @@ A cleanup thread is run in parallel and cleanup the old neighbor cache entries w
 
 from __future__ import with_statement
 from subprocess import Popen, PIPE
-from NDprotector.Log import warn
-import NDprotector
-import NDprotector.Cleanup 
 from threading import RLock
 from math import fabs
-from contextlib import nested
+
+from NDprotector.Log import warn
+import NDprotector
+import NDprotector.Cleanup
+
 
 
 # time after which a non updated entry in the NC is destroyed (in seconds)

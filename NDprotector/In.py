@@ -1,13 +1,16 @@
 """this module processes all the in-going packets by using nfqueue"""
 from socket import AF_INET6
+import sys
+
 from NDprotector.Log import warn
+
 from NDprotector.Address import Address
 from NDprotector.NeighCache import NeighCache
 from NDprotector.CertCache import CertCache
 from NDprotector.Tool import SigAlgList_split, CGAPKExtListtoPubKeyList
 from scapy6send.scapy6 import *
 import NDprotector
-import sys
+
 
 if "lib" not in sys.path:
     sys.path.append("lib")

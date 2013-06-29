@@ -1,5 +1,9 @@
-import os, sys, NDprotector
+import os
+import sys
+
+import NDprotector
 from NDprotector.Log import *
+
 
 # default prefix of the configurations file
 CONFIG_PREFIX = '/etc/NDprotector'
@@ -16,7 +20,7 @@ def main():
     from NDprotector.Filtering import set_filtering_rules
     from NDprotector.NeighCache import NeighborCacheStart
     from NDprotector.CertCache import CertCacheStart
-    from NDprotector.Plugin import get_plugins_by_capability, find_plugins
+    from NDprotector.Plugin import get_plugins_by_capability
     from NDprotector.NFQueues import run_queues
     from NDprotector.Tool import init_values
 

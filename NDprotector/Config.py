@@ -1,12 +1,9 @@
 """load the main configuration file"""
 import NDprotector
-from NDprotector.Address import Address
 from NDprotector.Plugin import init_plugin_path,\
                 load_plugins, \
                 find_plugins
 from NDprotector.Log import warn
-from NDprotector.Tool import PubKeyListtoCGAPKExtList
-from scapy6send.cert import PubKey, Key
 
 
 def readconfig(config_file):

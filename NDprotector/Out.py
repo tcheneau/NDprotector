@@ -1,9 +1,12 @@
 """this module processes all the out-going packets by using nfqueue"""
+import random
+import sys
+
 from NDprotector.Log import warn
 from NDprotector.NeighCache import NeighCache
 from scapy6send.scapy6 import *
 from NDprotector.Tool import used_interfaces
-import NDprotector, random, sys
+import NDprotector
 
 
 if "lib" not in sys.path:
