@@ -1,0 +1,39 @@
+RSA.number has been moved to Util.number. 
+We fixes this by only using "number", and importing it correctly.
+
+Index: scapy6/cert.py
+===================================================================
+--- scapy6.orig/cert.py
++++ scapy6/cert.py
+@@ -30,6 +30,13 @@ from Crypto.PublicKey import *
+ from Crypto.Cipher import *
+ from Crypto.Hash import *
+ 
++# starting from pycrypto 2.1.x, the Crypto.PublicKey.RSA.number has been moved
++# TC 02/03/10: may be a little dirty
++if hasattr(RSA,"number"):
++    number= RSA.number
++else:
++    from Crypto.Util import number
++
+ # Maximum allowed size in bytes for a certificate file, to avoid
+ # loading huge file when importing a cert
+ MAX_KEY_SIZE=50*1024
+@@ -83,7 +90,7 @@ def pkcs_os2ip(x):
+ 
+     Reverse function is pkcs_i2osp()
+     """
+-    return RSA.number.bytes_to_long(x) 
++    return number.bytes_to_long(x) 
+ 
+ # IP2OS function defined in RFC 3447 for octet string to integer conversion
+ def pkcs_i2osp(x,xLen):
+@@ -99,7 +106,7 @@ def pkcs_i2osp(x,xLen):
+ 
+     Reverse function is pkcs_os2ip().
+     """
+-    z = RSA.number.long_to_bytes(x)
++    z = number.long_to_bytes(x)
+     padlen = max(0, xLen-len(z))
+     return '\x00'*padlen + z
+ 

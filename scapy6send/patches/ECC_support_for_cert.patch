@@ -1,0 +1,67 @@
+Adds the ECC support for the cert object.
+
+Index: scapy6send/cert.py
+===================================================================
+--- scapy6send.orig/cert.py
++++ scapy6send/cert.py
+@@ -79,18 +79,19 @@ def strand(s1, s2):
+     return "".join(map(lambda x,y:chr(ord(x)&ord(y)), s1, s2))
+ 
+ # OS2IP function defined in RFC 3447 for octet string to integer conversion
+-def pkcs_os2ip(x):
+-    """
+-    Accepts a byte string as input parameter and return the associated long
+-    value:
+-
+-    Input : x        octet string to be converted
+-
+-    Output: x        corresponding nonnegative integer
+-
+-    Reverse function is pkcs_i2osp()
+-    """
+-    return number.bytes_to_long(x) 
++pkcs_os2ip = number.bytes_to_long
++# def pkcs_os2ip(x):
++#     """
++#     Accepts a byte string as input parameter and return the associated long
++#     value:
++# 
++#     Input : x        octet string to be converted
++# 
++#     Output: x        corresponding nonnegative integer
++# 
++#     Reverse function is pkcs_i2osp()
++#     """
++#     return number.bytes_to_long(x) 
+ 
+ # IP2OS function defined in RFC 3447 for octet string to integer conversion
+ def pkcs_i2osp(x,xLen):
+@@ -1817,7 +1818,27 @@ class Cert(PubKey):
+         if res != '':
+             raise Exception(error_msg)
+ 
+-        self.key = PubKey(pubkey)
++        try:
++            import ecc
++            ECCsupport = True
++        except ImportError:
++            ECCsupport = False
++
++        self.key = None
++        try:
++            self.key = PubKey(pubkey)
++        except Exception, e:
++            if not ECCsupport:
++                raise e
++            else:
++                exception = e
++
++        if not self.key:
++            try:
++                import ecc
++                self.key = ecc.ECCkey(pubkey)
++            except Exception, e:
++                raise Exception("unable to load Public Key")
+ 
+         # extract the X509 IP Address or Block if present
+         # (TC: naive form of the extraction)

@@ -1,0 +1,19 @@
+Python 2.6 uses the "with" statement in a way that makes the Gnuplot "with"
+argument throw a Syntax Error
+
+Index: scapy6-send/scapy.py
+===================================================================
+--- scapy6-send.orig/scapy.py
++++ scapy6-send/scapy.py
+@@ -3226,9 +3226,9 @@ class TracerouteResult(SndRcvList):
+             if loctrace:
+                 trt[trace_id] = loctrace
+ 
+-        tr = map(lambda x: Gnuplot.Data(x,with="lines"), trt.values())
++        tr = map(lambda x: Gnuplot.Data(x,with_="lines"), trt.values())
+         g = Gnuplot.Gnuplot()
+-        world = Gnuplot.File(conf.gnuplot_world,with="lines")
++        world = Gnuplot.File(conf.gnuplot_world,with_="lines")
+         g.plot(world,*tr)
+         return g
+ 

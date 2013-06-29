@@ -1,0 +1,10 @@
+Next versions:
+
+- add a rate limiting mechanism
+- prevent some DoS attacks in In.py
+- allow priviledge separation
+- better parsing of the configuration file
+- provide a script to create certificate path
+- provide a better documentation for setup and usage
+- change "NDprotector.default_publickey" by a more appropriate name
+- add a CRL support

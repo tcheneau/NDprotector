@@ -1,0 +1,188 @@
+Replaces the support of the RSA signature option by
+the Universal Signature Option (backward compatible)
+
+Index: scapy6send/scapy6.py
+===================================================================
+--- scapy6send.orig/scapy6.py
++++ scapy6send/scapy6.py
+@@ -2582,7 +2582,7 @@ icmp6ndopts = { 1: "Source Link-Layer Ad
+                 9: "Source Address List",
+                10: "Target Address List",
+                11: "CGA Option",            # RFC 3971
+-               12: "RSA Signature Option",  # RFC 3971
++               12: "Universal Signature Option",  # draft-cheneau-csi-send-sig-agility (update RFC 3971)
+                13: "Timestamp Option",      # RFC 3971
+                14: "Nonce option",          # RFC 3971
+                15: "Trust Anchor Option",   # RFC 3971
+@@ -2612,7 +2612,7 @@ icmp6ndoptscls = { 1: "ICMPv6NDOptSrcLLA
+                    9: "ICMPv6NDOptSrcAddrList",
+                   10: "ICMPv6NDOptTgtAddrList",
+                   11: "ICMPv6NDOptCGA",
+-                  12: "ICMPv6NDOptRSASig",
++                  12: "ICMPv6NDOptUSSig", # draft-cheneau-csi-send-sig-agility (update RFC 3971)
+                   13: "ICMPv6NDOptTimestamp",
+                   14: "ICMPv6NDOptNonce",
+                   15: "ICMPv6NDOptTrustAnchor",
+@@ -6218,13 +6218,16 @@ def construct_der_pubkey(m, mLen, e):
+ 
+     return res
+ 
+-def get_public_key_hash(k):
++def get_public_key_hash(k, sigtypeID=0):
+     """
+-    Return the most-significant 128-bit of a SHA-1 hash of the public
++    Return the most-significant 128-bit of a SHA-XXX hash of the public
+     key. k can be a Key, PubKey or Cert instance. None is returned on
+     error. This function is used by "Key Hash" field in RSA Signature
+     option
++    The hash function is determined by the sigtypeID parameter.
+     """
++    import hashlib
++
+     s = None
+ 
+     if isinstance(k, Key):
+@@ -6243,7 +6246,16 @@ def get_public_key_hash(k):
+     if s is None:
+         return None
+ 
+-    s = SHA.new(s).digest()
++    if sigtypeID == 0:
++        s = hashlib.sha1(s).digest()
++    elif sigtypeID == 1 or sigtypeID == 9 :
++        s = hashlib.sha256(s).digest()
++    elif sigtypeID == 10:
++        s = hashlib.sha384(s).digest()
++    elif sigtypeID == 11:
++        s = hashlib.sha512(s).digest()
++    else:
++        print "sigtypeID must be 0, 1, 9, 10 or 11"
+ 
+     return s[:16]
+ 
+@@ -6257,7 +6269,7 @@ class _RSAKeyHashField(StrFixedLenField)
+         if x is None:
+             x = ""
+             if pkt.key is not None:
+-                x = get_public_key_hash(pkt.key)
++                x = get_public_key_hash(pkt.key, pkt.sigtypeID)
+         elif type(x) is not str:
+             x=str(x)
+         return x
+@@ -6285,17 +6297,24 @@ class _RSAKeyHashField(StrFixedLenField)
+ # a first checksum for the purpose of RSA Signature computation.
+ #
+ # --arno
+-class ICMPv6NDOptRSASig(_ICMPv6NDGuessPayload, Packet):
+-    name = "ICMPv6 Neighbor Discovery Option - RSA Signature"
++#
++# TC: added a padlen field as specified in draft-cheneau-cis-send-sig-agility
++# removes all ambiguity on how to compute the padding with the sigtypeID is
++# different from 0 (0 is for backward compatibility with RFC 3971)
++class ICMPv6NDOptUSSig(_ICMPv6NDGuessPayload, Packet):
++    name = "ICMPv6 Neighbor Discovery Option - Universal Signature"
+     fields_desc = [ ByteEnumField("type", 12, icmp6ndopts),
+                     ByteField("len", None),
+-                    ShortField("res", None),
++                    ByteField("padlen", None),
++                    XBitField("res", 0, 3),
++                    XBitField("sigtypeID", 0, 5),
+                     _PhantomKeyField("key", None), # I'm not really there
+                     _RSAKeyHashField("keyh", None, 16),
+-                    StrLenField("sig", None,
+-                                length_from = lambda pkt: 8*(pkt.len-3)),
+-                    StrLenField("pad", None,
+-                                length_from = lambda pkt: 4) ]
++                    StrLenField("sig", None, # behavior depends on sigtypeID value
++                                length_from = lambda pkt: (pkt.sigtypeID==0 and 8*(pkt.len-3))\
++                                                           or 8*pkt.len - pkt.padlen -20),
++                    StrLenField("pad", None, # behavior depends on sigtypeID value
++                                length_from = lambda pkt: (pkt.sigtypeID==0 and 4) or pkt.padlen) ]
+ 
+     def build_tbs_string(self):
+         """
+@@ -6306,13 +6325,13 @@ class ICMPv6NDOptRSASig(_ICMPv6NDGuessPa
+         while tmp.underlayer:
+             tmp = tmp.underlayer
+         tmp = tmp.copy()
+-        p = tmp[ICMPv6NDOptRSASig]
++        p = tmp[ICMPv6NDOptUSSig]
+         
+         # We have to construct a fake version of the packet
+-        # without the RSA Signature option. We work on a copy
++        # without the Universal Signature option. We work on a copy
+         c = p.underlayer
+         if c is None:
+-            print "Missing underlayed during RSA Signature Option post_build()"
++            print "Missing underlayed during Universal Signature Option post_build()"
+             return None
+ 
+         # Remove the RSA Signature option (and following options)
+@@ -6324,7 +6343,7 @@ class ICMPv6NDOptRSASig(_ICMPv6NDGuessPa
+         while not (isinstance(i, _ICMPv6) or i is None):
+             i = i.underlayer
+         if i is None:
+-            print "Unable to find ICMPv6 payload during RSA Signature Option post_build()"
++            print "Unable to find ICMPv6 payload during Universal Signature Option post_build()"
+             return None
+         del(i.cksum)
+         
+@@ -6333,7 +6352,7 @@ class ICMPv6NDOptRSASig(_ICMPv6NDGuessPa
+         while not (isinstance(p, IPv6) or p is None):
+             p = p.underlayer
+         if p is None:
+-            print "Unable to find IPv6 payload during RSA Signature Option post_build()"
++            print "Unable to find IPv6 payload during Universal Signature Option post_build()"
+             return None
+         del(p.plen)
+ 
+@@ -6360,11 +6379,16 @@ class ICMPv6NDOptRSASig(_ICMPv6NDGuessPa
+             return False
+ 
+         # signature's size is the size of the Public Key
+-        import math
+-        signature = self.sig[:int(math.ceil(float(len(k))/8))]
+-
+-        s = self.build_tbs_string()
+-        return k.verify(s, signature, "pkcs")
++        if self.sigtypeID == 0:
++            import math
++            signature = self.sig[:int(math.ceil(float(len(k))/8))]
++
++            s = self.build_tbs_string()
++            return k.verify(s, signature, "pkcs")
++        elif self.sigtypeID == 1:
++            s = self.build_tbs_string()
++            print len(self.sig)
++            return k.verify(s, self.sig, "pkcs", "sha256")
+ 
+     def post_build(self, pkt, pay):
+ 
+@@ -6374,18 +6398,24 @@ class ICMPv6NDOptRSASig(_ICMPv6NDGuessPa
+             if k is not None:
+                 s = self.build_tbs_string()
+                 if s is not None:
+-                    sig = k.sign(s, "pkcs")
++                    if self.sigtypeID == 0:
++                        sig = k.sign(s, "pkcs")
++                    elif self.sigtypeID == 1:
++                        sig = k.sign(s, "pkcs","sha256")
++                    # add other signature algorithms here
+                     self.sig = sig
+                     pkt = pkt[:20] + sig + pkt[20:]
+                 else:
+-                    print "Unable to compute signature in RSA Signature option post_build()"
++                    print "Unable to compute signature in Universal Signature option post_build()"
+             else:
+-                print "No private key provided in RSA Signature option"
++                print "No private key provided in Universal Signature option"
+                 
+         if self.pad is None:
+             padlen = 8 - (len(pkt) % 8)
+             if padlen == 8:
+                 padlen = 0
++            if  self.sigtypeID != 0:
++                pkt = pkt[:2] + chr(padlen) + pkt[3:]
+             pkt += '\x00'*padlen
+           
+         if self.len is None:

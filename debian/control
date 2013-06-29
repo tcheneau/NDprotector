@@ -1,0 +1,15 @@
+Source: ndprotector
+Section: net
+Priority: optional
+Maintainer: Tony Cheneau
+Build-Depends: debhelper (>=7.0.0), python-support (>= 0.6), cdbs (>= 0.4.49), nfqueue-bindings-python 
+Standards-Version: 3.8.3
+
+Package: ndprotector
+Architecture: all
+Homepage: http://amnesiak.org/ndprotector/
+XB-Python-Version: ${python:Versions}
+Depends: ${misc:Depends}, ${python:Depends} nfqueue-bindings-python (>= 0.3)
+Description: an implementation of CGA [RFC3972] and SEND [RFC3971]
+ Yet another SEND implementation. This one aims to provied an easy to configure
+ and lightweight version of SEND.

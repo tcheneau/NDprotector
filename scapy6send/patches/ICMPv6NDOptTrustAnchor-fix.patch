@@ -1,0 +1,17 @@
+Class ICMPv6NDOptTrustAnchor's field named "name" conflicts with the "name" attribute.
+"name" field of the option as been renamed "name_field"
+
+
+Index: scapy6/scapy6.py
+===================================================================
+--- scapy6.orig/scapy6.py
++++ scapy6/scapy6.py
+@@ -6409,7 +6409,7 @@ class ICMPv6NDOptTrustAnchor(_ICMPv6NDGu
+                     ByteField("len", None),
+                     ByteEnumField("nametype", 1, _send_name_types),
+                     ByteField("padlen", None),
+-                    StrLenField("name", None,
++                    StrLenField("name_field", None,
+                                 length_from = lambda pkt: 8*pkt.len - 4 - pkt.padlen),
+                     StrLenField("pad", None,
+                                 length_from = lambda pkt: pkt.padlen) ]

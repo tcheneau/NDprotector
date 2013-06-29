@@ -1,0 +1,41 @@
+ndprotector (0.5) stable; urgency=low
+   * Improves the key format detection (ECC related)
+   * Implements draft-cheneau-csi-cga-pk-agility (not flag to disable this
+     behavior yet)
+   * An example of possible plugin: ephemeral CGA addresses (address valid
+     lifetime limited to a TCP connection)
+   * As usual: various bugfixes
+
+ -- Tony Cheneau <tony.cheneau@it-sudparis.eu>  Fri, 30 Jun 2010 17:00:00 +0100
+
+ndprotector (0.4) stable; urgency=low
+   * All the code based on XMLRPC calls has been removed
+   * ndprotector daemon now runs only one main processus and on cleaning
+     thread
+   * Signature Agility support (as described in
+     draft-cheneau-csi-send-sig-agility)
+   * ECC support (as described in draft-cheneau-csi-ecc-sig-agility)
+   * Lot of bug fixes
+
+
+ -- Tony Cheneau <tony.cheneau@it-sudparis.eu>  Fri, 05 May 2010 13:37:00 +0100
+
+ndprotector (0.3) stable; urgency=low
+   * Correction some bugs that appeared in "mixed mode"
+   * The addresses assigned through SLAAC can now go to deprecated state
+   * Various bug fixes
+
+
+ -- Tony Cheneau <tony.cheneau@it-sudparis.eu>  Fri, 17 Mar 2010 15:05:00 +0100
+
+ndprotector (0.2) stable; urgency=low
+  * Corrects a lot of bugs
+  * Add a CPS/CPA support
+  * many more
+ -- Tony Cheneau <tony.cheneau@it-sudparis.eu>  Fri, 26 Feb 2010 16:45:00 +0100
+
+ndprotector (0.1) stable; urgency=low
+
+  * Initial release. (Closes: #XXXXXX)
+
+ -- Tony Cheneau <tony.cheneau@it-sudparis.eu>  Tue, 08 Dec 2009 10:25:13 +0100

@@ -1,0 +1,131 @@
+# default sendd config file
+
+# DO NOT CHANGE theses values unless you know what you're doing
+NDprotector.retrans_timer = 1
+# timestamp verification algorithm variables
+NDprotector.ts_delta = 300
+NDprotector.ts_fuzz = 1
+NDprotector.ts_drift = 0.01
+
+# indicate which signature algorithm is supported, order matters
+NDprotector.SignatureAlgorithms = \
+            SigTypeID.keys() # we authorize all the supported keys
+
+# you can edit the rest of the file :)
+
+
+
+# path to the plugin directory
+NDprotector.pluginpath = "NDprotector/plugins"
+
+# plugins that could be loaded
+NDprotector.plugins = []
+# available plugin
+# NDprotector.plugins = [ 'ephemeraladdress' ]
+
+# if the node is a router:
+#  - it does not interpret RA messages
+#  - it interperts CPS and answers CPA
+NDprotector.is_router = False
+
+# mixed mode indicates if the daemon is configured to accept both secured and
+# unsecured NDP messages (an unseccured message will not ovewrite a secured
+# entry though)
+NDprotector.mixed_mode = False
+
+# allow NDprotector to flush all the IPv6 addresses on all interfaces
+# (so that only CGA are on the interfaces)
+NDprotector.flush_interfaces = True
+
+# /!\ Beware:
+# force test on X.509 IP Address extension
+# (only used when is_router is set to False)
+# by default, the extensions are checked against, however, it needs
+# OpenSSL to have been compiled with the -enable-rfc3779 flag
+NDprotector.x509_ipextension = True
+
+
+# default sec value used for address creation 
+# (value higher than 1, while totally conform to RFC 3971/3972,
+# are not recommanded as they require a lot of processing power)
+NDprotector.default_sec_value = 1
+
+# If True, the programm automotaticlally assign addresses on the interfaces
+# the program will also clean up and destroy unused addresses
+# If set to False, the user must to the address assignement manually
+NDprotector.assign_addresses = True
+
+
+# Default key size for RSA keys
+NDprotector.rsa_key_size = 1024
+
+# Minimum (RSA) key size for  ingoing messages
+# when the key is bellow this value, the message is considered insecure
+NDprotector.min_RSA_key_size = 384
+
+# Maximum size of a (RSA) key 
+# key whose length exceed this value are ignored
+NDprotector.max_RSA_key_size = 2048
+
+
+# Path to the default Public Key used for Stateless Address Autoconfiguration
+# if None is provided, generate a new RSA Public Key for new addresses
+NDprotector.default_publickey = None
+# NDprotector.default_publickey = "/etc/NDprotector/mypublickey.pem"
+
+# Path to the trust anchor
+# For host it is [ TA1, TA2 ]
+# For router, this is empty ( [] )
+NDprotector.trustanchors = [ "/etc/NDprotector/ta1.pem",
+                             "/etc/NDprotector/ta2.pem" ]
+
+# Certification path
+# Order matters (first certificate is the CA, then level1, etc.
+# For routers it is [ [C1,C2,C3], ..., [C1',C2',C3'] ]
+# For host, this is empty ( [] ) 
+# Ex: here, there is two paths
+NDprotector.certification_path = []
+
+# list of configured addresses
+# (you must at least configure a Link-Local address 
+# for each interface you want this daemon to listen on)
+NDprotector.configured_addresses = \
+                        [ \
+			# Address(interface = "eth0", # can be omitted if only one outgoing interface is available
+                        # address = "fe80::3062:ca0b:e098:91ec", # can not work, for demonstration purposes
+                        # key = "test_key.pem",
+                        # modifier =  36147483618661711768276696653219369138L, # should be set to the modifier value
+			# sec = 1,
+                        # collcount = 0, 
+                        # ext = None ),
+			# Address(interface = "eth0", # can be omitted if only one outgoing interface is available
+                        # address = "fe80::38d4:a8ac:f9c:8a52", # can not work, for demonstration purposes
+                        # key = "test_key.pem",
+                        # modifier =  36147483618661711768276696653219369138L, # should be set to the modifier value
+			# sec = 1,
+                        # collcount = 1, 
+		        # ext = None ),
+
+			# list of configured prefixes where autoconfiguration will be applied
+			Address(interface = "eth0",
+			prefix = "fe80::",
+			key = "/etc/NDprotector/key.pem"), # if ommited,  uses the key pointed by default_publickey
+			# or fallback (when default_publickey is None) and the program will compute a new RSA key
+			# Address(interface = "eth0", # for example this one will build it's own key
+			# prefix = "2001::",
+			# sec=0)
+			
+
+                        # this configuration exemple applies to nodes willing to share an address
+                        # each one as its Private key and the Public key of the others
+                        # Multiple Public Keys are stored in the CGA PDS
+                        #
+                        # exemple of configuration for the first node
+                        # Address(interface = "eth0", sec = 0, key = "/etc/NDprotector/first-key.pem",
+                        #         ext = PubKeyListtoCGAPKExtList("/etc/NDprotector/second-key.pem"), prefix = "fe80::" , modifier = 0, dad=False)
+                        #
+                        # keypos indicates the position of the Public Key bound to the Private Key the node will sign with
+                        # Address(interface = "eth0", sec=0, key="/etc/NDprotector/second-key.pem", publickey="/etc/NDprotector/first-key.pem",
+                        #         ext = PubKeyListtoCGAPKExtList( [ "/etc/NDprotector/second-key.pem" ]), prefix= "fe80::" , keypos = 1, modifier = 0, dad= False)
+			]
+

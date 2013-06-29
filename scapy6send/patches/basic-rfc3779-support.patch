@@ -1,0 +1,54 @@
+Add a basic support for RFC3779 X.509 extensions.
+Current limitation: only read one address.
+Depends on OpenSSL's support of RFC3779 at compile time.
+
+
+Index: scapy6/cert.py
+===================================================================
+--- scapy6.orig/cert.py
++++ scapy6/cert.py
+@@ -1808,13 +1808,43 @@ class Cert(PubKey):
+         w.close()
+         pubkey = r.read()
+         r.close()
+-        res = e.read()
++        _ = e.read()
+         e.close()
+         if res != '':
+             raise Exception(error_msg)
+ 
+         self.key = PubKey(pubkey)
+ 
++        # extract the X509 IP Address or Block if present
++        # (TC: naive form of the extraction)
++        self.addrblock = False
++
++
++        extracttext = "openssl x509 -noout -text"
++        r,w,e = popen2.popen3(extracttext)
++        w.write(self.pemcert)
++        w.close()
++        textout = r.read()
++        r.close()
++        _ = e.read()
++        e.close()
++        if res != '':
++            raise Exception(error_msg)
++
++        # parse the output of OpenSSL in order 
++        # to locate IP Address or Block extensions
++        addrpatt="""\s*?sbgp-ipAddrBlock: critical
++\s*?IPv6:
++\s*?([:\w]*?)/(\d*)"""
++        
++        import re
++        addrext = re.search(addrpatt,textout,re.S|re.M)
++        if addrext:
++            (addr, prefix_len) = addrext.groups()
++            self.IPAddrExt = (addr, int(prefix_len))
++        else:
++            self.IPAddrExt = None
++
+         
+         # Subject Key Identifier
+ 

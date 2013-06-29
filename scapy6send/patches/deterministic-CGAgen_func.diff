@@ -1,0 +1,174 @@
+Breaks the CGAgen function into two functions.
+The CGAgen1 function can be usefull for test purposes, where the same CGA needs
+to be generated from the same fixed argument or whene a CGA must not be correct
+(as fewer test are performed in this function)
+
+Index: scapy6/scapy6.py
+===================================================================
+--- scapy6.orig/scapy6.py
++++ scapy6/scapy6.py
+@@ -5862,7 +5862,72 @@ class CGAParams(Packet):
+         s = SHA.new(str(tmp)).digest()
+         return s[:14]
+ 
+-def CGAgen(prefix, key, sec, ext=[], do_dad=False):
++def CGAgen1(prefix,key,sec,ext=[],modifier=None,ccount=None):
++    """compute unverified, but deterministic CGA values
++    Should not be called directly"""
++
++    if sec < 0 or sec > 7:
++        print "sec must be an integer between 0 and 7"
++        return None
++    
++    if not isinstance(key, PubKey):
++        print "key parameter is not a public key"
++        return None
++
++    if type(ext) != list:
++        ext = [ext]
++    ext_str = "".join(map(lambda x: str(x), ext))
++
++    # different steps of section 4 of RFC3972
++
++    # 1
++    # if a modifier is specified, shunt the randomization process
++    if modifier!=None:
++        m = modifier
++    else:
++        m = randstring(16)
++
++    # 2, 3
++    # we skip 2 and 3 if the modifier is fixed during the call
++    if not modifier:
++        while True:
++            s = m + '\x00'*9 + str(key) + ext_str
++            s = SHA.new(s).digest()
++            Hash2 = s[:14]
++            if sec == 0 or Hash2[:2*sec] == '\x00\x00'*sec:
++                break
++            m = pkcs_i2osp(pkcs_os2ip(m) + 1, 16)[-16:]
++        
++    # 4
++    if not ccount:
++        ccount = 0
++
++    # 5
++    dad_retries = 0
++
++    c = CGAParams(modifier = m, prefix = prefix, ccount = ccount,
++                  pubkey = key, ext = ext)
++    Hash1 = c.hash1()
++
++    # 6
++    tmp = (ord(Hash1[0]) & 0x1c) + (sec << 5)
++    ifaceid = chr(tmp) + Hash1[1:]
++
++    # 7
++    p = socket.inet_pton(socket.AF_INET6, prefix)[:8]
++    addr = socket.inet_ntop(socket.AF_INET6, p + ifaceid)
++
++    # steps 8 and 9 are not performed here, but are performed in the function CGAgen()
++       
++    # 9
++    c = CGAParams(modifier = m, prefix = prefix, ccount = ccount,
++                  pubkey = key, ext = ext)
++
++    return (addr, c)
++
++
++
++def CGAgen(prefix, key, sec, ext=[], do_dad=False, modifier=None, ccount=None):
+     """
+     Given:
+ 
+@@ -5870,6 +5935,10 @@ def CGAgen(prefix, key, sec, ext=[], do_
+     - the public key: a PubKey instance
+     - the security parameter: a value between 0 and 7
+     - optional extensions as a string, extension or list of extensions.
++
++    One can render the process deterministic by passing:
++    - the modifier: a 16 bytes random number
++    - the collision counter: a value between 0 and 2
+     
+     the function returns a tuple (addr, params), where:
+ 
+@@ -5885,66 +5954,33 @@ def CGAgen(prefix, key, sec, ext=[], do_
+     None is returned on error.
+     """
+     
+-    if sec < 0 or sec > 7:
+-        print "sec must be an integer between 0 and 7"
+-        return None
+-    
+-    if not isinstance(key, PubKey):
+-        print "key parameter is not a public key"
+-        return None
++    # perform steps 1 to 7 (+ step 9)
++    (addr,c) = CGAgen1(prefix,key,sec,ext,modifier,ccount)
+ 
+-    if type(ext) != list:
+-        ext = [ext]
+-    ext_str = "".join(map(lambda x: str(x), ext))
++    if not ccount:
++        ccount = 0
+ 
+-    # 1
+-    m = randstring(16)
+-
+-    # 2, 3
+-    while True:
+-        s = m + '\x00'*9 + str(key) + ext_str
+-        s = SHA.new(s).digest()
+-        Hash2 = s[:14]
+-        if sec == 0 or Hash2[:2*sec] == '\x00\x00'*sec:
+-            break
+-        m = pkcs_i2osp(pkcs_os2ip(m) + 1, 16)[-16:]
+-        
+-    # 4
+-    ccount = 0
+-
+-    # 5
+-    dad_retries = 0
++    # step 8
+     while True:
+-        c = CGAParams(modifier = m, prefix = prefix, ccount = ccount,
+-                      pubkey = key, ext = ext)
+-        Hash1 = c.hash1()
+-    
+-        # 6
+-        tmp = (ord(Hash1[0]) & 0x1c) + (sec << 5)
+-        ifaceid = chr(tmp) + Hash1[1:]
+-    
+-        # 7
+-        p = socket.inet_pton(socket.AF_INET6, prefix)[:8]
+-        addr = socket.inet_ntop(socket.AF_INET6, p + ifaceid)
+-
+-        # 8
+         if not do_dad:
+             break
+ 
+-        if dad_retries == 3:
++        if ccount == 3:
+             print "DAD performed three times, three collisions found"
+             return None
+ 
++        # FIXME
++        # TC 10/08/09: this function call perform a broken DAD
++        # - only listen for one answer
++        # - does not listen for the sollicited node multicast address
+         resp = neighsol(addr, "::", iface=conf.iface)
+         if resp is None:
+             break
+         else:
+-            ccount = 1
+-            dad_retries += 1
++            ccount += 1
++            (addr,c)=CGAgen1(prefix,key,sec,ext,c.modifier,ccount)
+            
+-    # 9
+-    c = CGAParams(modifier = m, prefix = prefix, ccount = ccount,
+-                  pubkey = key, ext = ext)
++    # step 9 has already been performed
+ 
+     return (addr, c)
+ 

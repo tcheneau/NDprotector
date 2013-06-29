@@ -1,0 +1,210 @@
+This patche completes the Universal Signature Option support and brings the ECC
+support to scapy6
+
+Index: scapy6send/scapy6.py
+===================================================================
+--- scapy6send.orig/scapy6.py
++++ scapy6send/scapy6.py
+@@ -28,6 +28,7 @@ try:
+     CERT=1
+ except:
+     CERT=0
++
+     
+ #############################################################################
+ # Helpers                                                                  ##
+@@ -5791,9 +5792,19 @@ class CGAPubKeyField(StrField):
+         return m
+ 
+     def getfield(self, pkt, s):
++        # this is an RSA PubKey ?
+         try:
+             z = PubKey(s)
+             l = len(str(z))
++            if z!=None:
++                return s[l:], z
++        except:
++            pass
++        # this is an ECC key ?
++        try:
++            from ecc import ECCkey
++            z = ECCkey(s)
++            l = len(str(z))
+             return s[l:], z
+         except:
+             return s, None
+@@ -5801,6 +5812,13 @@ class CGAPubKeyField(StrField):
+     def i2repr(self, pkt, x):
+         if isinstance(x, PubKey):
+             return "%d bits, exp %d" % (x.modulusLen, x.pubExp)
++        try:
++            from ecc import ECCkey
++            if isinstance(x, ECCkey):
++                return SigTypeID[x.get_sigtypeID()[0]]
++        except ImportError:
++            pass
++
+         return x
+ 
+ class CGAExtField(PacketListField):
+@@ -5874,8 +5892,15 @@ def CGAgen1(prefix,key,sec,ext=[],modifi
+     if sec < 0 or sec > 7:
+         print "sec must be an integer between 0 and 7"
+         return None
++
++    try:
++        from ecc import ECCkey
++    except ImportError:
++        class ECCkey():
++            pass
+     
+-    if not isinstance(key, PubKey):
++    if not isinstance(key, PubKey) \
++            and not isinstance(key, ECCkey):
+         print "key parameter is not a public key"
+         return None
+ 
+@@ -5894,9 +5919,10 @@ def CGAgen1(prefix,key,sec,ext=[],modifi
+ 
+     # 2, 3
+     # we skip 2 and 3 if the modifier is fixed during the call
++    key_str = str(key)
+     if not modifier:
+         while True:
+-            s = m + '\x00'*9 + str(key) + ext_str
++            s = m + '\x00'*9 + key_str + ext_str
+             s = SHA.new(s).digest()
+             Hash2 = s[:14]
+             if sec == 0 or Hash2[:2*sec] == '\x00\x00'*sec:
+@@ -6070,12 +6096,18 @@ def CGAverifySig(m, sig, cga, params, ta
+     
+     m = tag + m
+     return params.pubkey.verify(m, sig, "pkcs")
++
+ SigTypeID = { 0: "RSA/SHA-1",
+               1: "RSA/SHA-256",
+               9: "ECDSA (P-256)/SHA-256",
+               10: "ECDSA (P-384)/SHA-384",
+               11: "ECDSA (P-521)/SHA-512" }
+ 
++SigTypeHashfunc = { 0: "sha1",
++                    1: "sha256",
++                    9: "sha256",
++                    10: "sha384",
++                    11: "sha512" }
+ class SigAlg(Packet):
+     name = "Signature Algorithm field"
+     fields_desc = [ BitField("sign", 0, 1),
+@@ -6157,6 +6189,14 @@ class _PhantomKeyField(ByteField):
+         return s, None
+ 
+     def i2repr(self, pkt, x):
++        try:
++            from ecc import ECCkey
++            if isinstance(x, ECCkey):
++                # XXX FIX ME: do more, i.e. print the key
++                return "ECC Key available"
++        except ImportError:
++            pass
++
+         if isinstance(x, PubKey):
+             # XXX FIX ME: do more, i.e. print the key
+             return "Public Key available"
+@@ -6230,7 +6270,9 @@ def get_public_key_hash(k, sigtypeID=0):
+ 
+     s = None
+ 
+-    if isinstance(k, Key):
++    if isinstance(k, PubKey):
++        s = str(k)
++    elif isinstance(k, Key):
+         mLen = k.modulusLen / 8
+         m = pkcs_i2osp(k.modulus, mLen)
+         e = k.pubExp
+@@ -6240,26 +6282,27 @@ def get_public_key_hash(k, sigtypeID=0):
+         m = pkcs_i2osp(k.modulus, mLen)
+         e = k.exponent
+         s = construct_der_pubkey(m, mLen, e)
+-    elif isinstance(k, PubKey):
+-        s = str(k)
++
++    try:
++        from ecc import ECCkey
++        if isinstance(k, ECCkey):
++            s = str(k)
++    except ImportError:
++        pass
++
+ 
+     if s is None:
+         return None
+ 
+-    if sigtypeID == 0:
+-        s = hashlib.sha1(s).digest()
+-    elif sigtypeID == 1 or sigtypeID == 9 :
+-        s = hashlib.sha256(s).digest()
+-    elif sigtypeID == 10:
+-        s = hashlib.sha384(s).digest()
+-    elif sigtypeID == 11:
+-        s = hashlib.sha512(s).digest()
+-    else:
++    try: 
++        hashfunc = getattr(hashlib, SigTypeHashfunc[sigtypeID])
++        s = hashfunc(s).digest()
++    except KeyError:
+         print "sigtypeID must be 0, 1, 9, 10 or 11"
+-
++    
+     return s[:16]
+ 
+-class _RSAKeyHashField(StrFixedLenField):
++class _XYKeyHashField(StrFixedLenField):
+ 
+     def getfield(self, pkt, s):
+         l = self.length_from(pkt)
+@@ -6309,7 +6352,7 @@ class ICMPv6NDOptUSSig(_ICMPv6NDGuessPay
+                     XBitField("res", 0, 3),
+                     XBitField("sigtypeID", 0, 5),
+                     _PhantomKeyField("key", None), # I'm not really there
+-                    _RSAKeyHashField("keyh", None, 16),
++                    _XYKeyHashField("keyh", None, 16),
+                     StrLenField("sig", None, # behavior depends on sigtypeID value
+                                 length_from = lambda pkt: (pkt.sigtypeID==0 and 8*(pkt.len-3))\
+                                                            or 8*pkt.len - pkt.padlen -20),
+@@ -6369,9 +6412,9 @@ class ICMPv6NDOptUSSig(_ICMPv6NDGuessPay
+ 
+         return s
+ 
+-    def verify_rsa_sig(self, k):
++    def verify_sig(self, k):
+         """
+-        Verify RSA signature option validity against provided key (public
++        Verify universal signature option validity against provided key (public
+         or private key pair) or certificate.
+         
+         """
+@@ -6385,10 +6428,9 @@ class ICMPv6NDOptUSSig(_ICMPv6NDGuessPay
+ 
+             s = self.build_tbs_string()
+             return k.verify(s, signature, "pkcs")
+-        elif self.sigtypeID == 1:
++        elif self.sigtypeID in [1, 9, 10, 11]: # this is RSA/SHA-256 and ECC
+             s = self.build_tbs_string()
+-            print len(self.sig)
+-            return k.verify(s, self.sig, "pkcs", "sha256")
++            return k.verify(s,self.sig, "pkcs", SigTypeHashfunc[self.sigtypeID])
+ 
+     def post_build(self, pkt, pay):
+ 
+@@ -6398,10 +6440,7 @@ class ICMPv6NDOptUSSig(_ICMPv6NDGuessPay
+             if k is not None:
+                 s = self.build_tbs_string()
+                 if s is not None:
+-                    if self.sigtypeID == 0:
+-                        sig = k.sign(s, "pkcs")
+-                    elif self.sigtypeID == 1:
+-                        sig = k.sign(s, "pkcs","sha256")
++                    sig = k.sign(s, "pkcs", SigTypeHashfunc[self.sigtypeID])
+                     # add other signature algorithms here
+                     self.sig = sig
+                     pkt = pkt[:20] + sig + pkt[20:]

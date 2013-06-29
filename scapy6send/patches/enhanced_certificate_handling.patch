@@ -1,0 +1,176 @@
+The key extracted from the cert is now a PubKey object.
+
+Also start to fixe Cert.py to handle new openssl 1.0 output
+
+Index: scapy6/cert.py
+===================================================================
+--- scapy6.orig/cert.py
++++ scapy6/cert.py
+@@ -432,7 +432,9 @@ class PubKey(OSSLHelper):
+     # Below are the fields we recognize in the -text output of openssl
+     # and from which we extract information. We expect them in that
+     # order. Number of spaces does matter.
+-    possible_fields = [ "Modulus (",
++    possible_fields = [ "Public-Key: (",
++                        "Modulus:",
++                        "Modulus (",
+                         "Exponent:" ]
+     possible_fields_count = len(possible_fields)
+     
+@@ -534,55 +536,44 @@ class PubKey(OSSLHelper):
+ 
+         self.keypath = keypath
+ 
+-        # Parse the -text output of openssl to make things available
+-        l = self.textkey.split('\n', 1)
+-        if len(l) != 2:
+-            raise Exception(error_msg)
+-        cur, tmp = l
+-        i = 0
+-        k = self.possible_fields[i] # Modulus (
+-        cur = cur[len(k):] + '\n'
+-        while k:
+-            l = tmp.split('\n', 1)
+-            if len(l) != 2: # Over
+-                fields_dict[k] = cur
+-                break
+-            l, tmp = l
+ 
+-            newkey = 0
+-            # skip fields we have already seen, this is the purpose of 'i'
+-            for j in range(i, self.possible_fields_count):
+-                f = self.possible_fields[j]
+-                if l.startswith(f):
+-                    fields_dict[k] = cur
+-                    cur = l[len(f):] + '\n'
+-                    k = f
+-                    newkey = 1
+-                    i = j+1
+-                    break
+-            if newkey == 1:
+-                continue
+-            cur += l + '\n'
++        # # Parse the -text output of openssl to make things available
++        # TC 02/09/10: this code replaces the old code and uses re expressions
++        import re
++
++
++        oldPublicKey = """Modulus \((.*?) bit\):
++(.*?)
++Exponent: (.*?) \(.*?\)"""
++        newPublicKey = """Public-Key: \((.*?) bit\)
++Modulus:
++(.*?)
++Exponent: (.*?) \(.*?\)"""
++
++        pattold = re.compile(oldPublicKey,re.M|re.S)
++        pattnew = re.compile(newPublicKey,re.M|re.S)
++
++        res =  pattold.search(self.textkey)
++        if res:
++            (modulusLen, modulus, exponent) = res.groups()
++
++        else: # we try the new pattern
++            res = pattnew.search(self.textkey)
++            if res:
++                (modulusLen, modulus, exponent) = res.groups()
+ 
+-        # modulus and modulus length
+-        v = fields_dict["Modulus ("]
+-        self.modulusLen = None
+-        if v:
+-            v, rem = v.split(' bit):', 1)
+-            self.modulusLen = int(v)
+-            rem = rem.replace('\n','').replace(' ','').replace(':','')
+-            self.modulus = long(rem, 16)
+-        if self.modulus is None:
+-            raise Exception(error_msg)
+-        
+-        # public exponent
+-        v = fields_dict["Exponent:"]
+-        self.pubExp = None
+-        if v:
+-            self.pubExp = long(v.split('(', 1)[0])
+-        if self.pubExp is None:
++
++
++        try:
++            self.modulusLen = int(modulusLen)
++            self.modulus = long( modulus.replace('\n','').replace(' ','').replace(':',''),16)
++            self.pubExp = long(exponent)
++        except AttributeError:
+             raise Exception(error_msg)
+ 
++
++
++
+         self.key = RSA.construct((self.modulus, self.pubExp, ))
+ 
+     def __str__(self):
+@@ -1776,28 +1767,47 @@ class Cert(PubKey):
+             raise Exception(error_msg)
+         
+         # Modulus
+-        v = fields_dict["                Modulus ("]
+-        self.modulus = None
+-        if v:
+-            v,t = v.split(' bit):',1)
+-            self.modulusLen = int(v)
+-            t = t.replace(' ', '').replace('\n', ''). replace(':', '')
+-            self.modulus_hexdump = t
+-            self.modulus = long(t, 16)
+-        if self.modulus is None:
+-            raise Exception(error_msg)
++        # TC 02/01/10: changed so I can extract the Public Key, no matter its type
++        # Besides, the text output of OpenSSL changed for the 1.0 branch...
+ 
+-        # Exponent
+-        v = fields_dict["                Exponent:"]
+-        self.exponent = None
+-        if v:
+-            v = v.split('(',1)[0]
+-            self.exponent = long(v)
+-        if self.exponent is None:
++        # old code
++        # v = fields_dict["                Modulus:"]
++        # self.modulus = None
++        # if v:
++        #     v,t = v.split(' bit):',1)
++        #     self.modulusLen = int(v)
++        #     t = t.replace(' ', '').replace('\n', ''). replace(':', '')
++        #     self.modulus_hexdump = t
++        #     self.modulus = long(t, 16)
++        # if self.modulus is None:
++        #     raise Exception(error_msg)
++
++        # # Exponent
++        # v = fields_dict["                Exponent:"]
++        # self.exponent = None
++        # if v:
++        #     v = v.split('(',1)[0]
++        #     self.exponent = long(v)
++        # if self.exponent is None:
++        #     raise Exception(error_msg)
++
++        # # Public Key instance
++        # self.key = RSA.construct((self.modulus, self.exponent, ))
++
++
++        extractpubstr = "openssl x509 -noout -pubkey"
++        r,w,e = popen2.popen3(extractpubstr)
++        w.write(self.pemcert)
++        w.close()
++        pubkey = r.read()
++        r.close()
++        res = e.read()
++        e.close()
++        if res != '':
+             raise Exception(error_msg)
+ 
+-        # Public Key instance
+-        self.key = RSA.construct((self.modulus, self.exponent, ))
++        self.key = PubKey(pubkey)
++
+         
+         # Subject Key Identifier
+ 

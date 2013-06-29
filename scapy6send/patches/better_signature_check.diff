@@ -1,0 +1,42 @@
+Verify the RSA signature of the Digital Signature field of the RSA Signature
+Option using the real length of the Public Key (which is available at the time
+of the verification)
+
+Allow a better handing of un-perfect signature, such as the one produced by the
+NTT Docomo implementation (where Padding can be 12 octets where it should have
+been rounded down to 4 octets).
+
+
+Index: scapy6/cert.py
+===================================================================
+--- scapy6.orig/cert.py
++++ scapy6/cert.py
+@@ -588,6 +588,9 @@ class PubKey(OSSLHelper):
+     def __str__(self):
+         return self.derkey
+ 
++    def __len__(self):
++        return self.modulusLen
++
+     ### Below are encryption methods
+ 
+     def _rsaep(self, m):
+Index: scapy6/scapy6.py
+===================================================================
+--- scapy6.orig/scapy6.py
++++ scapy6/scapy6.py
+@@ -6311,8 +6311,13 @@ class ICMPv6NDOptRSASig(_ICMPv6NDGuessPa
+         """
+         if self.sig is None:
+             return False
++
++        # signature's size is the size of the Public Key
++        import math
++        signature = self.sig[:int(math.ceil(float(len(k))/8))]
++
+         s = self.build_tbs_string()
+-        return k.verify(s, self.sig, "pkcs")
++        return k.verify(s, signature, "pkcs")
+ 
+     def post_build(self, pkt, pay):
+ 

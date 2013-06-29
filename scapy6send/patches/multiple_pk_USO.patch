@@ -1,0 +1,38 @@
+Enable the node to indicate the position of a key in the CGA PDS. 
+Useful when multiple keys are used and stored in the CGA PDS.
+
+Index: scapy6send/scapy6.py
+===================================================================
+--- scapy6send.orig/scapy6.py
++++ scapy6send/scapy6.py
+@@ -5922,7 +5922,9 @@ def CGAgen1(prefix,key,sec,ext=[],modifi
+     key_str = str(key)
+     if not modifier:
+         while True:
+-            s = m + '\x00'*9 + key_str + ext_str
++            # TC: seems more optimized
++            # s = m + '\x00'*9 + key_str + ext_str
++            s = "".join((m, '\x00\x00\x00\x00\x00\x00\x00\x00\x00', key_str, ext_str))
+             s = SHA.new(s).digest()
+             Hash2 = s[:14]
+             if sec == 0 or Hash2[:2*sec] == '\x00\x00'*sec:
+@@ -5951,8 +5953,8 @@ def CGAgen1(prefix,key,sec,ext=[],modifi
+     # steps 8 and 9 are not performed here, but are performed in the function CGAgen()
+        
+     # 9
+-    c = CGAParams(modifier = m, prefix = prefix, ccount = ccount,
+-                  pubkey = key, ext = ext)
++    # c = CGAParams(modifier = m, prefix = prefix, ccount = ccount,
++    #              pubkey = key, ext = ext)
+ 
+     return (addr, c)
+ 
+@@ -6349,7 +6351,7 @@ class ICMPv6NDOptUSSig(_ICMPv6NDGuessPay
+     fields_desc = [ ByteEnumField("type", 12, icmp6ndopts),
+                     ByteField("len", None),
+                     ByteField("padlen", None),
+-                    XBitField("res", 0, 3),
++                    XBitField("pos", 0, 3), # key position field, as defined in old version of draft-cheneau-csi-send-sig-agility
+                     XBitField("sigtypeID", 0, 5),
+                     _PhantomKeyField("key", None), # I'm not really there
+                     _XYKeyHashField("keyh", None, 16),

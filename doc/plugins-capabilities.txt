@@ -1,0 +1,21 @@
+Starting with NDprotector 0.4, there is a functionality to add plugins to the
+implementation. Currently the work is ongoing and should not be used. At some
+points, it should provide entrypoint in the code to add some function call and
+such to modify the behavior of the implementation.
+
+Only one functional plugin is embedded with this version of the code:
+Ephemeral CGA. It was developed for a research purpose. You should probably
+not use it.
+
+Plugin are tagged with categories that determines which entrypoint should be
+used for the plugin.
+
+A plugin may be classified in multiple categories.
+These categories can be:
+- NFQueue: implements a specific queue
+- Filtering: Add/suppress filtering rules
+- NeighborCache: modifies the behavior of the neighbor cache
+
+
+Might be implemented at a later time:
+- WarnOutput: modify the output warning

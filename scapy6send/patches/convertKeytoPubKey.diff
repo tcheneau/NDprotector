@@ -1,0 +1,25 @@
+Allow a Key() object to transform into a PubKey() object.
+
+Note that it uses the deprecated Popen2 instead of subprocess.
+
+
+Index: scapy6/cert.py
+===================================================================
+--- scapy6.orig/cert.py
++++ scapy6/cert.py
+@@ -1492,6 +1492,15 @@ class Key(PubKey):
+         else:
+             warning("Key.sign(): Unknown signature type (%s) provided" % t)
+             return None
++        
++    def toPubKey(self):
++       """(naively) convert a Key() instance to a PubKey() instance"""
++       fmtstr = 'openssl rsa -pubout' 
++       r,w,e = popen2.popen3(fmtstr)
++       w.write(self.pemkey)
++       w.close()
++       pubpemkey = r.read()
++       return PubKey(pubpemkey)
+ 
+ 
+ # We inherit from PubKey to get access to all encryption and verification

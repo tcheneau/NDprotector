@@ -1,0 +1,55 @@
+Warning:
+Some distros, like OpenSUSE 11.2 disabled IPv6 support inside python. This
+support must be enabled for this program to work correctly. Instructions on
+how to enable this support is distribution specific and is not detailed here.
+
+In order to test if our python distribution has IPv6 support, you can write
+these lines in an interactive python shell:
+$ import socket
+$ socket.has_ipv6
+
+Dependencies:
+
+The lib netfilter queue's binding in python. On Debian or Ubuntu:
+$ apt-get install nfqueue-bindings-python
+
+However, I recommend using the tip of the latest git version when possible:
+$ git clone http://git.inl.fr/git/nfqueue-bindings.git
+
+A modified version of scapy6, including CGA address & SEND messages support
+is required. It is shipped with this software in the directory scapy6send.
+
+You can manually install the software by executing in the source directory:
+$ python setup.py install
+
+An examples/ directory contains example of configuration file for the
+implemantation. The configuration files are fully commented.
+
+
+Please note that if you want to use X.509 IP address extension verification
+inside the certificates (x509_ipextension set to true in your configuration
+file), you need to have an OpenSSL library compiled with the
+RFC3779 support.
+
+You can do that on Debian by recompiling the OpenSSL package:
+
+$ apt-get source libssl0.9.8 # or the corresponding version
+$ cd openssl-0.9.8g
+$ vim debian/rules # add "enable-rfc3779" to the relevant line
+$ dpkg-buildpackage -rfakeroot # be patient
+$ cd ..
+$ # and this is it
+$ sudo  dpkg -i libssl0.9.8_0.9.8g-16ubuntu3.1_i386.deb
+
+On Gentoo, it is simplier, there is an "rfc3779" use flag on the
+dev-libs/openssl package.
+
+
+Once the program is installed (via the setup.py or via a distribution specific
+package) you can copy either sendd.conf.host or sendd.conf.router from the
+/usr/share/doc/ndprotector to /etc/NDprotector/sendd.conf. Then modify the
+config file to suite your needs.
+For a basic configuration, you only need to take care of the following variables:
+NDprotector.default_publickey
+NDprotector.trustanchors
+NDprotector.certification_path

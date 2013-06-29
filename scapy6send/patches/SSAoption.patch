@@ -1,0 +1,95 @@
+Add the Supported Signature Algorithm Option/ICMPv6NDOptSSA
+(part of draft-cheneau-csi-send-sig-agility-01)
+
+Index: scapy6send/scapy6.py
+===================================================================
+--- scapy6send.orig/scapy6.py
++++ scapy6send/scapy6.py
+@@ -2596,7 +2596,9 @@ icmp6ndopts = { 1: "Source Link-Layer Ad
+                23: "MAP Option",          # RFC 4140
+                24: "Route Information Option",  # RFC 4191
+                25: "Recusive DNS Server Option",
+-               26: "IPv6 Router Advertisement Flags Option"
++               26: "IPv6 Router Advertisement Flags Option",
++               # TC: value will change given the IANA inputs
++               42: "Supported Signature Option"
+                 }
+                   
+ icmp6ndoptscls = { 1: "ICMPv6NDOptSrcLLAddr",
+@@ -2624,7 +2626,10 @@ icmp6ndoptscls = { 1: "ICMPv6NDOptSrcLLA
+                   23: "ICMPv6NDOptMAP",
+                   24: "ICMPv6NDOptRouteInfo",
+                   25: "ICMPv6NDOptRDNSS",
+-                  26: "ICMPv6NDOptEFA"
++                  26: "ICMPv6NDOptEFA",
++                  # TC: value will change given the IANA inputs
++                  42: "ICMPv6NDOptSSA"
++
+                   }
+ 
+ class _ICMPv6NDGuessPayload:
+@@ -6065,7 +6070,49 @@ def CGAverifySig(m, sig, cga, params, ta
+     
+     m = tag + m
+     return params.pubkey.verify(m, sig, "pkcs")
++SigTypeID = { 0: "RSA/SHA-1",
++              1: "RSA/SHA-256",
++              9: "ECDSA (P-256)/SHA-256",
++              10: "ECDSA (P-384)/SHA-384",
++              11: "ECDSA (P-521)/SHA-512" }
++
++class SigAlg(Packet):
++    name = "Signature Algorithm field"
++    fields_desc = [ BitField("sign", 0, 1),
++                    BitField("reserved",0,2),
++                    BitEnumField("sigtypeID",0,5, SigTypeID )
++                  ]
++
++    def extract_padding(self, pay):
++        return "",pay
++
++class ICMPv6NDOptSSA(_ICMPv6NDGuessPayload, Packet):
++    name = "ICMPv6 Neighbor Discovery Option - SSA"
++    fields_desc = [ ByteEnumField("type", 42, icmp6ndopts),
++                    ByteField("len", None),
++                    ByteField("padlen", None),
++                    ByteField("res", None),
++                    PacketListField("sigalgs", [], SigAlg,
++                                length_from = lambda pkt: 8*pkt.len - 4 - pkt.padlen ),
++                    StrLenField("pad", None,
++                                length_from = lambda pkt: pkt.padlen) ]
++    def post_build(self, pkt, pay):
++        if self.pad is None:
++            padlen = 8 - (len(pkt) % 8)
++            if padlen == 8:
++                padlen = 0
++            pkt += '\x00'*padlen
++        else:
++            padlen = len(self.pad)
+ 
++        if self.padlen is None:
++            pkt = pkt[:2] + chr(padlen) + pkt[3:]
++          
++        if self.len is None:
++            l = len(pkt) / 8
++            pkt = pkt[:1] + chr(l) + pkt[2:]           
++
++        return pkt + pay
+ 
+ class ICMPv6NDOptCGA(_ICMPv6NDGuessPayload, Packet):
+     name = "ICMPv6 Neighbor Discovery Option - CGA"
+Index: scapy6send/cert.py
+===================================================================
+--- scapy6send.orig/cert.py
++++ scapy6send/cert.py
+@@ -589,6 +589,10 @@ Exponent: (.*?) \(.*?\)"""
+     def __len__(self):
+         return self.modulusLen
+ 
++    def get_sigtypeID(self):
++        """return the Signature Algorithms available with this kind of key"""
++        return [ 1, 0 ] # 1: RSA/SHA-256, 0: RSA/SHA-1
++
+     ### Below are encryption methods
+ 
+     def _rsaep(self, m):
