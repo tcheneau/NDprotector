@@ -7,11 +7,12 @@ Installer related issues
 ### Setuptools are not installed
 
 If you obtain the following error when trying to install NDprotector:
-> # python setup.py install
-> >> Traceback (most recent call last):
-> >>  File "setup.py", line 1, in <module>
-> >>   from setuptools import setup
-> >> ImportError: No module named setuptools
+
+	# python setup.py install
+	>> Traceback (most recent call last):
+	>>  File "setup.py", line 1, in <module>
+	>>   from setuptools import setup
+	>> ImportError: No module named setuptools
 
 
 Most likely, you need to install a "setuptools" package on your distro (or
@@ -25,7 +26,8 @@ to starting NDprotector. This can be solved by "flushing" the interfaces.
 
 For examples, if you want to flush all addresses on eth0, you can do the
 following:
-> ip -6 addr flush dev eth0
+
+		# ip -6 addr flush dev eth0
 
 (Note that the "ip" command is part of the iproute2 package)
 
@@ -40,21 +42,24 @@ How to generate a RSA key for the host
 --------------------------------------
 
 Using OpenSSL:
-> openssl genrsa 1024 > /etc/NDprotector/key.pem
+
+		# openssl genrsa 1024 > /etc/NDprotector/key.pem
 
 
 OpenSSL does not have the RFC 3779 extension, how do I build it ?
 -----------------------------------------------------------------
 
 In the OpenSSL source directory:
-> ./config enable-rfc3779
+
+		# ./config enable-rfc3779
 
 
 Strange warning about M2crypto not being found
 ----------------------------------------------
 
-> I get following errors: 
-> M2Crypt not found, ECC library disabled
+It could happen that you have the following warning message:
+
+		M2Crypt not found, ECC library disabled
 
 
 You can discard the M2Crypt reference. It indicates that the [M2Crypto]
